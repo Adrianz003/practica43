@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoreo de Temperatura y Control de LED</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="raphael-2.1.4.min.js"></script>
+    <script src="justgage.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            transition: background-color 0.5s;
+            margin-top: 50px;
+        }
+        .gauge-container {
+            width: 300px;
+            margin: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        const accessToken = "4575c31f1e1aa26d938b67b8e9698690af427cdc";
+        const deviceID = "0a10aced202194944a058ae4";
+        const urlT = https://api.particle.io/v1/devices/${deviceID}/temp';
+        const urlH = https://api.particle.io/v1/devices/${deviceID}/humedad';
+        const urlA = https://api.particle.io/v1/devices/${deviceID}/altitud';
+        const urlP = https://api.particle.io/v1/devices/${deviceID}/presion';
+        
+        // Inicializar medidores
+        let gaugeC, gaugeF;
+
+        function initializeGauges() {
+            gaugeC = new JustGage({ id: "gaugeC", value: 0, min: 0, max: 50, title: "°C" });
+            gaugeF = new JustGage({ id: "gaugeF", value: 0, min: 32, max: 122, title: "°F" });
+        }
+
+        function updateGauges(tempC, tempF) {
+            gaugeC.refresh(tempC);
+            gaugeF.refresh(tempF);
+        }
+
+        function fetchTemperature() {
+            $.when(
+                $.get(urlC, { access_token: accessToken }),
+                $.get(urlF, { access_token: accessToken })
+            ).done((dataC, dataF) => {
+                const tempC = parseFloat(dataC[0].result).toFixed(2);
+                const tempF = parseFloat(dataF[0].result).toFixed(2);
+                
+                // Cambiar color de fondo según la temperatura
+                document.body.style.backgroundColor = tempC < 20 ? "#a3c9ff" : (tempC < 40 ? "#ffc107" : "#f44336");
+                
+                // Actualizar medidores
+                updateGauges(tempC, tempF);
+
+                // Llamar de nuevo para actualizar cada segundo
+                setTimeout(fetchTemperature, 1000);
+            }).fail(() => {
+                alert("Error al conectar con el dispositivo. Revisa tu conexión o tus credenciales.");
+            });
+        }
+
+        function cambiarLed(estado) {
+            fetch(urlLed, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: access_token=${accessToken}&params=${estado}
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.return_value === 1 || data.return_value === 0) {
+                    alert(LED ${estado === 'on' ? 'encendido' : 'apagado'} correctamente.);
+                } else {
+                    alert("Error al cambiar el estado del LED.");
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        window.onload = () => {
+            initializeGauges();
+            fetchTemperature();
+        };
+    </script>
+</head>
+
+<body>
+    <h1>Monitoreo de Temperatura y Control de LED</h1>
+    
+    <div class="gauge-container">
+        <h2>Temperatura (°C)</h2>
+        <div id="gaugeC" style="height:250px; width:250px;"></div>
+    </div>
+    <div class="gauge-container">
+        <h2>Temperatura (°F)</h2>
+        <div id="gaugeF" style="height:250px; width:250px;"></div>
+    </div>
+
+    <button onclick="cambiarLed('on')">Encender LED</button>
+    <button onclick="cambiarLed('off')">Apagar LED</button>
+</body>
+</html>
